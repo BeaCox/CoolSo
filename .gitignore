@@ -3,6 +3,17 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# mongodb
+mongo_sample/db/*
+!mongo_sample/db/.gitkeep
+
+# models
+models/*
+!models/.gitkeep
+
+# test images
+test_images/*
+
 # C extensions
 *.so
 

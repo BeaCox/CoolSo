@@ -1,0 +1,19 @@
+mongodb-host: "127.0.0.1"
+mongodb-port: 27017
+mongodb-database: "db"
+mongodb-collection: "images"
+
+server-host: "0.0.0.0"
+server-port: 23456
+
+device: "cpu"
+storage-type: "float32"
+
+clip-model: "ViT-B/32"
+clip-model-download: "./models"
+import-image-base: "./data"
+
+enable-ocr: true
+ocr-det-model: "ch_PP-OCRv4_det_infer"
+ocr-rec-model: "ch_PP-OCRv4_rec_infer"
+ocr-model-download: "./models"
