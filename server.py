@@ -10,6 +10,7 @@ from PIL import Image
 import utils
 from clip_model import get_model
 import import_images
+from fuzzywuzzy import fuzz
 
 # calculate cosine similarity between query_feature and feature_list
 def cosine_similarity(query_feature, feature_list):
@@ -18,11 +19,6 @@ def cosine_similarity(query_feature, feature_list):
     sim_score = (query_feature @ feature_list.T)
 
     return sim_score[0]
-
-def compute_text_similarity(query_text, ocr_text):
-    # 实现计算文本相似度的函数
-    # 例如,您可以使用基于编辑距离的字符串相似度或语义相似度模型
-    return 1.0  # 返回一个虚拟分数,实际应该计算真实的相似度分数
 
 class SearchServer:
     def __init__(self, config):
@@ -77,8 +73,8 @@ class SearchServer:
         return top_n_filename, top_n_score
 
     def search_ocr_text(self, query_text, topn=20, search_filter_options={}):
+        # fuzzy search
         mongo_query_dict = self._get_search_filter(search_filter_options)
-        mongo_query_dict['ocr_text'] = {'$regex': query_text, '$options': 'i'}
         cursor = self.mongo_collection.find(mongo_query_dict, {"_id": 0, "filename": 1, "ocr_text": 1})
 
         filename_list = []
@@ -87,13 +83,15 @@ class SearchServer:
             filename_list.append(doc["filename"])
             ocr_text_list.append(doc["ocr_text"])
 
-        score_list = [compute_text_similarity(query_text, ocr_text) for ocr_text in ocr_text_list]
+        # use fuzzywuzzy to calculate similarity score
+        score_list = [fuzz.partial_ratio(query_text, ocr_text) for ocr_text in ocr_text_list]
 
         sorted_indices = sorted(range(len(score_list)), key=lambda k: score_list[k], reverse=True)
         sorted_filename = [filename_list[i] for i in sorted_indices[:topn]]
         sorted_scores = [score_list[i] for i in sorted_indices[:topn]]
 
         return sorted_filename, sorted_scores
+
 
     def convert_result_to_gradio(self, filename_list: List[str], score_list: List[float]):
         doc_result = self.mongo_collection.find(
