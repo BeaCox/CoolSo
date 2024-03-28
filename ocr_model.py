@@ -25,7 +25,6 @@ def download_ocr_model(config):
             os.system(f"tar -xf {os.path.join(download_path, model_name)}.tar -C {download_path}")
             os.system(f"rm {os.path.join(download_path, model_name)}.tar")
 
-
 class OCRModel:
     def __init__(self, config):
         """
@@ -41,7 +40,7 @@ class OCRModel:
             ocr_version="PP-OCRv4",
             det_model_dir="{}/{}".format(config['ocr-model-download'], config['ocr-det-model']),
             rec_model_dir="{}/{}".format(config['ocr-model-download'], config['ocr-rec-model']),
-            use_gpu=(config["device"] == "cuda"),
+            use_gpu=(config["ocr-device"] == "cuda"),
         )
 
     def get_ocr_text(self, image_path: str) -> str:
