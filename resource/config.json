@@ -1,0 +1,14 @@
+{
+    "ImageSource": {
+        "URL": "",
+        "Folders": [
+        ]
+    },
+    "MainWindow": {
+        "Language": "en_US"
+    },
+    "QFluentWidgets": {
+        "ThemeColor": "#fffab005",
+        "ThemeMode": "Light"
+    }
+}

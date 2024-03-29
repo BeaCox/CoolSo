@@ -1,5 +1,4 @@
 import os
-import shutil
 from glob import glob
 from datetime import datetime
 from pymongo.collection import Collection
@@ -7,10 +6,13 @@ from tqdm import tqdm
 import clip_model
 import ocr_model
 import utils
+from PyQt5.QtCore import QThread, pyqtSignal
+
+from config import cfg
 
 
 def import_single_image(filename: str, clip: clip_model.CLIPModel, ocr: ocr_model.OCRModel,
-                        config: dict, mongo_collection: Collection, copy: bool = False) -> None:
+                        config: dict, mongo_collection: Collection) -> None:
     """
     Import a single image file, extract features using CLIP model, perform OCR, and store the information in MongoDB.
 
@@ -20,7 +22,6 @@ def import_single_image(filename: str, clip: clip_model.CLIPModel, ocr: ocr_mode
     - ocr (ocr_model.OCRModel): Instance of the OCR model.
     - config (dict): Configuration dictionary.
     - mongo_collection (Collection): MongoDB collection to store the image information.
-    - copy (bool): Whether to copy the image file to another directory. Default is False.
 
     Returns:
     - None
@@ -39,20 +40,8 @@ def import_single_image(filename: str, clip: clip_model.CLIPModel, ocr: ocr_mode
     ocr_text = ocr.get_ocr_text(filename)
     print("OCR Text:", ocr_text)
 
-    if copy:
-        md5hash = utils.calc_md5(filename)
-        new_basename = md5hash + '.' + filetype
-        new_full_path = utils.get_full_path(config['import-image-base'], new_basename)
-
-        if os.path.isfile(new_full_path):
-            print("Duplicate file:", filename)
-            return
-
-        shutil.copy2(filename, new_full_path)
-        stat = os.stat(new_full_path)
-    else:
-        stat = os.stat(filename)
-        new_full_path = filename
+    stat = os.stat(filename)
+    new_full_path = filename
 
     image_mtime = datetime.fromtimestamp(stat.st_mtime)
     image_datestr = image_mtime.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
@@ -72,45 +61,48 @@ def import_single_image(filename: str, clip: clip_model.CLIPModel, ocr: ocr_mode
     mongo_collection.insert_one(document)
 
 
-def import_dir(base_dir: str, clip: clip_model.CLIPModel, ocr: ocr_model.OCRModel,
-               config: dict, mongo_collection: Collection, copy: bool = False) -> None:
+def import_dirs(base_dirs: list, clip: clip_model.CLIPModel, ocr: ocr_model.OCRModel,
+                config: dict, mongo_collection: Collection) -> None:
     """
-    Import all image files from a directory recursively.
+    Import all image files from multiple directories recursively.
 
     Args:
-    - base_dir (str): Path to the base directory.
+    - base_dirs (list): List of paths to the base directories.
     - clip (clip_model.CLIPModel): Instance of the CLIP model.
     - ocr (ocr_model.OCRModel): Instance of the OCR model.
     - config (dict): Configuration dictionary.
     - mongo_collection (Collection): MongoDB collection to store the image information.
-    - copy (bool): Whether to copy the image files to another directory. Default is False.
 
     Returns:
     - None
     """
-    filelist = glob(os.path.join(base_dir, '**/*'), recursive=True)
-    filelist = [f for f in filelist if os.path.isfile(f)]
+    for base_dir in base_dirs:
+        filelist = glob(os.path.join(base_dir, '**/*'), recursive=True)
+        filelist = [f for f in filelist if os.path.isfile(f)]
 
-    for filename in tqdm(filelist):
-        import_single_image(filename, clip, ocr, config, mongo_collection, copy=copy)
-
-
-def main():
-    """
-    Main function to run the image import process.
-    """
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--copy', action='store_true', help='Copy imported images to another directory')
-    parser.add_argument('dir', help='Directory containing images to import')
-    args = parser.parse_args()
-
-    config = utils.get_config()
-    mongo_collection = utils.get_mongo_collection()
-    clip = clip_model.get_model()
-    ocr = ocr_model.get_ocr_model()
-    import_dir(args.dir, clip, ocr, config, mongo_collection, copy=args.copy)
+        for filename in tqdm(filelist):
+            import_single_image(filename, clip, ocr, config, mongo_collection)
 
 
-if __name__ == '__main__':
-    main()
+
+class ImportThread(QThread):
+
+    threadFinished = pyqtSignal()
+
+    def __init__(self, base_dirs):
+        super().__init__()
+        self.base_dirs = base_dirs
+        self.clip = clip_model.get_model()
+        self.ocr = ocr_model.get_ocr_model()
+        self.config = utils.get_config()
+        self.mongo_collection = utils.get_mongo_collection()
+
+    def run(self):
+        if self.mongo_collection.count_documents({}) == 0:
+            import_dirs(self.base_dirs, self.clip, self.ocr, self.config, self.mongo_collection)
+            self.threadFinished.emit()
+            cfg.importFinished = True
+        else:
+            cfg.importFinished = True
+            print("Database is not empty. Skipping import.")
+

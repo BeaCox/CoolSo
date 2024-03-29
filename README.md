@@ -1,2 +1,2 @@
 # CoolSo
-An image search engine that can search images using image semantics, images using images, and images using text recognized by OCR
+An image search engine capable of performing semantic searches, finding images based on other images, and identifying images through text recognized by OCR
