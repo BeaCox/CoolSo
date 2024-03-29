@@ -41,7 +41,7 @@ class OCRModel:
             ocr_version="PP-OCRv4",
             det_model_dir="{}/{}".format(config['ocr-model-download'], config['ocr-det-model']),
             rec_model_dir="{}/{}".format(config['ocr-model-download'], config['ocr-rec-model']),
-            use_gpu=(config["device"] == "cuda"),
+            use_gpu=(config["ocr_device"] == "cuda"),
         )
 
     def get_ocr_text(self, image_path: str) -> str:
