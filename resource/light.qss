@@ -1,0 +1,27 @@
+Widget > QLabel {
+    font: 24px 'Segoe UI', 'Microsoft YaHei';
+}
+
+Widget {
+    background-color: rgb(249, 249, 249);
+}
+
+Window {
+    background-color: rgb(249, 249, 249);
+}
+
+NavigationBar > QLabel {
+    font: 18px 'Segoe UI', 'Microsoft YaHei';
+}
+
+SettingInterface, #scrollWidget {
+    background-color: rgb(249, 249, 249);
+}
+
+QScrollArea {
+    border: none;
+}
+
+PromptSearchInerface, #imageContainer {
+    background-color: rgb(249, 249, 249);
+}
