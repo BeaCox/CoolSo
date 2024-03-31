@@ -14,7 +14,10 @@ class CLIPModel:
             config (dict): Configuration dictionary.
         """
         self.config = config
-        self.device = self.config.get('device', 'cuda' if torch.cuda.is_available() else 'cpu')
+        if self.config.get('device') == 'cuda' and not torch.cuda.is_available():
+            self.device = 'cpu'
+        else:
+            self.device = self.config.get('device', 'cuda' if torch.cuda.is_available() else 'cpu')
         self.model, self.preprocess = self.get_model()
 
     def get_model(self):
