@@ -1,13 +1,16 @@
 import io
 import os
+from typing import Union
 
 from PIL import Image
 from PyQt5.QtCore import QEasingCurve, Qt, QByteArray, QBuffer, QTimer, QPoint, QIODevice
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QStackedWidget, QFileDialog, QApplication
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QStackedWidget, QFileDialog, QApplication, \
+    QButtonGroup
 from qfluentwidgets import (FluentIcon, PlainTextEdit, isDarkTheme, InfoBar, PushButton, FlowLayout, SimpleCardWidget,
                             ImageLabel, SingleDirectionScrollArea, SegmentedWidget, BodyLabel, PrimaryPushButton,
-                            CommandBarView, Action, Flyout, FlyoutAnimationType, SmoothMode)
-from PyQt5.QtGui import QFont, QPixmap, QImage, QKeySequence
+                            CommandBarView, Action, Flyout, FlyoutAnimationType, SmoothMode, RadioButton,
+                            ExpandGroupSettingCard, LineEdit, ComboBox,)
+from PyQt5.QtGui import QFont, QPixmap, QImage, QKeySequence, QIcon
 
 import utils
 import clip_model
@@ -18,22 +21,26 @@ from import_images import import_single_image
 
 
 class SearchInterface(QWidget):
-    def __init__(self, search_type="local", parent=None):
+    def __init__(self, search_type, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout()
+        self.mongo_collection = utils.get_mongo_collection()
         self.inputCard = SearchMethods()
         self.inputCard.setFocus()
         self.setFocusPolicy(Qt.StrongFocus)
         QTimer.singleShot(0, self.inputCard.ImageInterface.setFocus)
-        self.outputCard = ImageGallery(search_type)
         self.inputCard.setFixedHeight(250)
-        layout.addWidget(self.inputCard)
-        layout.addWidget(self.outputCard)
-        self.setLayout(layout)
+        self.search_options = SearchOptionCard(FluentIcon.FILTER, self.tr("Search Options"))
+        self.outputCard = ImageGallery()
         if search_type == "local":
             self.setObjectName("Local-Search-Interface")
         else:
             self.setObjectName("Online-Search-Interface")
+        layout.addWidget(self.inputCard)
+        if search_type == "online":
+            layout.addWidget(self.search_options)
+        layout.addWidget(self.outputCard)
+        self.setLayout(layout)
 
     def keyPressEvent(self, event):
         if event.matches(QKeySequence.Paste):
@@ -70,7 +77,6 @@ class SearchMethods(SimpleCardWidget):
         self.pivot = SegmentedWidget(self)
         self.stackedWidget = QStackedWidget(self)
         self.vBoxLayout = QVBoxLayout(self)
-        self.mongo_collection = utils.get_mongo_collection()
 
         self.search_service = SearchService()
         self.PromptInterface = PromptInterface()
@@ -116,7 +122,7 @@ class SearchMethods(SimpleCardWidget):
 
     def onSearchButtonClicked(self):
         currentInterface = self.stackedWidget.currentWidget()
-        if self.mongo_collection.count_documents({}) == 0:
+        if self.parent().mongo_collection.count_documents({}) == 0:
             InfoBar.error(
                 title=self.tr("Error"),
                 content=self.tr("Database is empty, check the settings or update."),
@@ -165,14 +171,14 @@ class SearchMethods(SimpleCardWidget):
         else:
             print("Unknown interface")
             return
-        self.parent().outputCard.updateGallery(self.parent().outputCard.get_image_paths(cfg.folder.value))
+        self.parent().outputCard.updateGallery()
 
     def onUpdateButtonClicked(self):
         self.clearButton.setEnabled(False)
         self.recognizeButton.setEnabled(False)
         print("Start updating...\n")
         base_dirs = cfg.folder.value
-        cursor = self.mongo_collection.find({}, {"filename": 1})  
+        cursor = self.parent().mongo_collection.find({}, {"filename": 1})
         saved_filename_list = [obj["filename"] for obj in cursor]
         current_filename_list = []
         for base_dir in base_dirs:
@@ -315,8 +321,77 @@ class ImageInterface(SimpleCardWidget):
         return pil_image
 
 
+class SearchOptionCard(ExpandGroupSettingCard):
+    def __init__(self,  icon: Union[str, QIcon], title: str, content=None, parent=None):
+        super().__init__(icon, title, content, parent=parent)
+
+        # Radio buttons
+        self.bookmarkOption = RadioButton(self.tr('By bookmark'))
+        self.artistOption = RadioButton(self.tr('By artist'))
+        self.keywordOption = RadioButton(self.tr('By keyword'))
+        self.buttonGroup = QButtonGroup(self)
+        self.buttonGroup.addButton(self.bookmarkOption)
+        self.buttonGroup.addButton(self.artistOption)
+        self.buttonGroup.addButton(self.keywordOption)
+
+        # Bookmark option widgets
+        self.bookmarkWidget = QWidget(self.view)
+        self.bookmarkOptionLayout = QHBoxLayout(self.bookmarkWidget)
+        self.bookmarkOptionLayout.addWidget(self.bookmarkOption)
+        self.uidInput = LineEdit()
+        self.uidInput.setFixedWidth(500)
+        self.uidInput.setPlaceholderText("Enter bookmark owner uid")
+        self.bookmarkOptionLayout.addWidget(self.uidInput)
+
+        # Artist option widgets
+        self.artistOptionWidget = QWidget(self.view)
+        self.artistOptionLayout = QHBoxLayout(self.artistOptionWidget)
+        self.artistOptionLayout.addWidget(self.artistOption)
+        self.artistIdInput = LineEdit()
+        self.artistIdInput.setFixedWidth(500)
+        self.artistIdInput.setPlaceholderText("Enter artist uid")
+        self.artistOptionLayout.addWidget(self.artistIdInput)
+
+        # Keyword option widgets
+        self.keywordOptionWidget = QWidget(self.view)
+        self.keywordOptionLayout = QHBoxLayout(self.keywordOptionWidget)
+        self.keywordOptionLayout.addWidget(self.keywordOption)
+        self.orderBox = ComboBox()
+        self.orderBox.setPlaceholderText("Search from")
+        self.orderBox.addItem("Hottest")
+        self.orderBox.addItem("Latest")
+        self.orderBox.setCurrentIndex(-1)
+        self.keywordOptionLayout.addWidget(self.orderBox)
+        self.restrictBox = ComboBox()
+        self.restrictBox.setPlaceholderText("Limit to")
+        self.restrictBox.addItem("Safe")
+        self.restrictBox.addItem("R18")
+        self.restrictBox.addItem("All")
+        self.restrictBox.setCurrentIndex(-1)
+        self.keywordOptionLayout.addWidget(self.restrictBox)
+        self.keywordInput = LineEdit()
+        self.keywordInput.setFixedWidth(500)
+        self.keywordInput.setPlaceholderText("Enter keyword")
+        self.keywordOptionLayout.addWidget(self.keywordInput)
+
+        self.bookmarkOption.setChecked(True)
+        self.__initLayout()
+
+    def __initLayout(self):
+        # Create a main layout to hold all options
+        mainLayout = QVBoxLayout()
+        mainLayout.addWidget(self.bookmarkWidget)
+        mainLayout.addWidget(self.artistOptionWidget)
+        mainLayout.addWidget(self.keywordOptionWidget)
+
+        self.viewLayout.addLayout(mainLayout)
+
+        # ensure correct initial size
+        self._adjustViewSize()
+
+
 class ImageGallery(SingleDirectionScrollArea):
-    def __init__(self, search_type="local"):
+    def __init__(self):
         super().__init__()
         self.setSmoothMode(SmoothMode.NO_SMOOTH)
         self.imageContainer = SimpleCardWidget()
@@ -330,23 +405,17 @@ class ImageGallery(SingleDirectionScrollArea):
         self.imageFlow.setContentsMargins(30, 30, 30, 30)
         self.imageFlow.setVerticalSpacing(20)
         self.imageFlow.setHorizontalSpacing(10)
-        if search_type == "local":
-            imagePaths = self.get_image_paths(cfg.folder.value)
-            for imagePath in imagePaths:
-                imageCard = ImageCard(imagePath)
-                imageCard.setFixedSize(168, 168)
-                self.imageFlow.addWidget(imageCard)
-        else:
-            pass
+        self.updateGallery()
 
         self.__setQss()
 
-    def updateGallery(self, imagePaths):
+    def updateGallery(self):
         # clear all images
         self.imageFlow.removeAllWidgets()
 
-        # add new images
-        for imagePath in imagePaths:
+        cursor = utils.get_mongo_collection().find({}, {"filename": 1})
+        image_paths = [obj["filename"] for obj in cursor]
+        for imagePath in image_paths:
             imageCard = ImageCard(imagePath)
             imageCard.setFixedSize(168, 168)
             self.imageFlow.addWidget(imageCard)
@@ -356,16 +425,6 @@ class ImageGallery(SingleDirectionScrollArea):
         theme = 'dark' if isDarkTheme() else 'light'
         with open(f'resource/{theme}.qss', 'r') as f:
             self.setStyleSheet(f.read())
-
-    def get_image_paths(self, directories):
-        supported_extensions = {'.jpg', '.png', '.bmp', '.gif', '.jpeg'}
-        image_paths = []
-        for directory in directories:
-            for root, dirs, files in os.walk(directory):
-                for file in files:
-                    if os.path.splitext(file)[1].lower() in supported_extensions:
-                        image_paths.append(os.path.join(root, file))
-        return image_paths
 
 
 class ImageCard(ImageLabel):

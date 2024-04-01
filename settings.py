@@ -61,7 +61,7 @@ class SettingInterface(ScrollArea):
             parent=self.configurationGroup
         )
         self.accountCard = AccountSettingCard(
-            FIF.GLOBE,
+            FIF.PEOPLE,
             self.tr("Pixiv"),
             self.tr("Configure your Pixiv account"),
             parent=self.configurationGroup
@@ -168,8 +168,8 @@ class AccountSettingCard(SettingCard):
         self.cookieInput = PasswordLineEdit()
         self.uidInput.setFixedWidth(200)
         self.cookieInput.setFixedWidth(200)
-        self.uidInput.setPlaceholderText(self.tr('Enter UID'))
-        self.cookieInput.setPlaceholderText(self.tr('Enter Cookie'))
+        self.uidInput.setPlaceholderText(self.tr('Enter uid'))
+        self.cookieInput.setPlaceholderText(self.tr('Enter cookie'))
         self.uidInput.setText(cfg.uid.value)
         self.cookieInput.setText(cfg.cookie.value)
         self.hBoxLayout.addWidget(self.uidLabel, 0, Qt.AlignRight)

@@ -1,9 +1,10 @@
 {
+    "Pixiv": {
+        "Cookie": "",
+        "UID": ""
+    },
     "ImageSource": {
-        "URL": "",
-        "Folders": [
-            "D:/Data/CollegeFiles/2023-2024-2/pic"
-        ]
+        "Folders": []
     },
     "MainWindow": {
         "Language": "en_US"
