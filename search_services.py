@@ -81,6 +81,7 @@ class SearchService:
             {"filename": {"$in": filename_list}},
             {"_id": 0, "filename": 1, "width": 1, "height": 1, "filesize": 1, "date": 1, "ocr_text": 1})
         doc_result = list(doc_result)
+        print(doc_result)
         filename_to_doc_dict = {d['filename']: d for d in doc_result}
         ret_list = []
         for filename, score in zip(filename_list, score_list):

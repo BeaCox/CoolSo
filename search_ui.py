@@ -10,8 +10,11 @@ from qfluentwidgets import (FluentIcon, PlainTextEdit, isDarkTheme, InfoBar, Pus
 from PyQt5.QtGui import QFont, QPixmap, QImage, QKeySequence
 
 import utils
+import clip_model
+import ocr_model
 from config import cfg
 from search_services import SearchService
+from import_images import import_single_image
 
 
 class SearchInterface(QWidget):
@@ -82,12 +85,16 @@ class SearchMethods(SimpleCardWidget):
         self.clearButton.clicked.connect(self.onClearButtonClicked)
         self.recognizeButton = PrimaryPushButton(FluentIcon.SEARCH, self.tr("Search"))
         self.recognizeButton.clicked.connect(self.onSearchButtonClicked)
+        self.updateButton = PrimaryPushButton(FluentIcon.ADD, self.tr("Update"))
+        self.updateButton.clicked.connect(self.onUpdateButtonClicked)
         self.clearButton.setFixedWidth(120)
         self.recognizeButton.setFixedWidth(120)
+        self.updateButton.setFixedWidth(120)
 
         buttonsLayout = QHBoxLayout()
         buttonsLayout.addWidget(self.clearButton)
         buttonsLayout.addWidget(self.recognizeButton)
+        buttonsLayout.addWidget(self.updateButton)
 
         self.vBoxLayout.addWidget(self.pivot)
         self.vBoxLayout.addWidget(self.stackedWidget)
@@ -160,6 +167,29 @@ class SearchMethods(SimpleCardWidget):
             print("Unknown interface")
             return
         self.parent().outputCard.updateGallery(self.parent().outputCard.get_image_paths(cfg.folder.value))
+
+    def onUpdateButtonClicked(self):
+        print("Start updating...\n")
+        base_dirs = cfg.folder.value
+        cursor = self.mongo_collection.find({}, {"filename": 1})  
+        saved_filename_list = [obj["filename"] for obj in cursor]
+        current_filename_list = []
+        for base_dir in base_dirs:
+            abs_files = [os.path.join(base_dir, file) for file in os.listdir(base_dir)]
+            current_filename_list.extend(abs_files)
+        
+        # 检测新增
+        cnt = 0
+        for current_filename in current_filename_list:
+            if current_filename not in saved_filename_list:
+                cnt += 1
+                import_single_image(current_filename, clip_model.get_model(), 
+                                    ocr_model.get_ocr_model(), 
+                                    utils.get_config(), 
+                                    utils.get_mongo_collection())
+
+        print("Finish updating. Updated {} item(s)".format(cnt))
+        self.onClearButtonClicked() # 刷新图库
 
     def onCurrentIndexChanged(self, index):
         widget = self.stackedWidget.widget(index)

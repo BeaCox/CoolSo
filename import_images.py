@@ -106,3 +106,4 @@ class ImportThread(QThread):
             cfg.importFinished = True
             print("Database is not empty. Skipping import.")
 
+
