@@ -80,7 +80,7 @@ class Window(FramelessWindow):
 
     def initNavigation(self):
         self.addSubInterface(self.localSearchInterface, FIF.HOME, self.tr("Local Search"))
-        self.addSubInterface(self.onlineSearchInterface, FIF.GLOBE, self.tr("Online Search"))
+        self.addSubInterface(self.onlineSearchInterface, FIF.PEOPLE, self.tr("Pivix Search"))
         self.addSubInterface(self.historyInterface, FIF.HISTORY, self.tr("History"))
         # add item to bottom
         self.navigationInterface.addItem(

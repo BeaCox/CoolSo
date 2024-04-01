@@ -81,11 +81,11 @@ class SearchMethods(SimpleCardWidget):
         self.addSubInterface(self.OCRInterface, 'OCRInterface', self.tr('By OCR'))
         self.addSubInterface(self.ImageInterface, 'ImageInterface', self.tr('By Image'))
 
-        self.clearButton = PushButton(FluentIcon.SYNC, self.tr("Reset"))
+        self.clearButton = PushButton(FluentIcon.BROOM, self.tr("Reset"))
         self.clearButton.clicked.connect(self.onClearButtonClicked)
         self.recognizeButton = PrimaryPushButton(FluentIcon.SEARCH, self.tr("Search"))
         self.recognizeButton.clicked.connect(self.onSearchButtonClicked)
-        self.updateButton = PrimaryPushButton(FluentIcon.ADD, self.tr("Update"))
+        self.updateButton = PrimaryPushButton(FluentIcon.UPDATE, self.tr("Update"))
         self.updateButton.clicked.connect(self.onUpdateButtonClicked)
         self.clearButton.setFixedWidth(120)
         self.recognizeButton.setFixedWidth(120)
@@ -100,7 +100,6 @@ class SearchMethods(SimpleCardWidget):
         self.vBoxLayout.addWidget(self.stackedWidget)
         self.vBoxLayout.setContentsMargins(30, 10, 30, 10)
         self.vBoxLayout.addLayout(buttonsLayout)
-
 
         self.stackedWidget.currentChanged.connect(self.onCurrentIndexChanged)
         self.stackedWidget.setCurrentWidget(self.PromptInterface)
@@ -120,7 +119,7 @@ class SearchMethods(SimpleCardWidget):
         if self.mongo_collection.count_documents({}) == 0:
             InfoBar.error(
                 title=self.tr("Error"),
-                content=self.tr("Folder not selected or changed, check the settings screen or reboot."),
+                content=self.tr("Database is empty, check the settings or update."),
                 parent=self
             ).show()
             return
@@ -169,6 +168,8 @@ class SearchMethods(SimpleCardWidget):
         self.parent().outputCard.updateGallery(self.parent().outputCard.get_image_paths(cfg.folder.value))
 
     def onUpdateButtonClicked(self):
+        self.clearButton.setEnabled(False)
+        self.recognizeButton.setEnabled(False)
         print("Start updating...\n")
         base_dirs = cfg.folder.value
         cursor = self.mongo_collection.find({}, {"filename": 1})  
@@ -189,6 +190,8 @@ class SearchMethods(SimpleCardWidget):
                                     utils.get_mongo_collection())
 
         print("Finish updating. Updated {} item(s)".format(cnt))
+        self.clearButton.setEnabled(True)
+        self.recognizeButton.setEnabled(True)
         self.onClearButtonClicked() # 刷新图库
 
     def onCurrentIndexChanged(self, index):

@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QButtonGr
 from qfluentwidgets import (ScrollArea, SettingCardGroup, OptionsSettingCard, HyperlinkCard, PrimaryPushSettingCard,
                             RadioButton, setTheme, setThemeColor, isDarkTheme, LineEdit, ExpandGroupSettingCard, Theme,
                             ExpandLayout, ColorDialog, qconfig, ColorConfigItem, FluentIconBase, ComboBoxSettingCard,
-                            InfoBar, SettingCard, FolderListSettingCard)
+                            InfoBar, SettingCard, FolderListSettingCard, PasswordLineEdit)
 from qfluentwidgets import FluentIcon as FIF
 
 import utils
@@ -60,10 +60,10 @@ class SettingInterface(ScrollArea):
             directory=QStandardPaths.writableLocation(QStandardPaths.MusicLocation),
             parent=self.configurationGroup
         )
-        self.URLCard = URLSettingCard(
+        self.accountCard = AccountSettingCard(
             FIF.GLOBE,
-            self.tr("URL"),
-            self.tr("Configure the URL for online search"),
+            self.tr("Pixiv"),
+            self.tr("Configure your Pixiv account"),
             parent=self.configurationGroup
         )
 
@@ -115,7 +115,7 @@ class SettingInterface(ScrollArea):
         self.personalizationGroup.addSettingCard(self.themeColorCard)
         self.personalizationGroup.addSettingCard(self.languageCard)
         self.configurationGroup.addSettingCard(self.folderCard)
-        self.configurationGroup.addSettingCard(self.URLCard)
+        self.configurationGroup.addSettingCard(self.accountCard)
         self.aboutGroup.addSettingCard(self.helpCard)
         self.aboutGroup.addSettingCard(self.feedbackCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
@@ -158,19 +158,37 @@ class SettingInterface(ScrollArea):
     def clearDB(self):
         self.mongo_collection.drop()
 
-class URLSettingCard(SettingCard):
+class AccountSettingCard(SettingCard):
     def __init__(self, icon: Union[str, QIcon, FluentIconBase], title, content=None, parent=None):
         super().__init__(icon, title, content, parent)
-        self.urlLabel = LineEdit()
-        self.urlLabel.setFixedWidth(200)
-        self.urlLabel.setPlaceholderText(self.tr('Enter URL'))
-        self.urlLabel.setText(cfg.URL.value)
-        self.hBoxLayout.addWidget(self.urlLabel, 0, Qt.AlignRight)
-        self.hBoxLayout.addSpacing(16)
-        self.urlLabel.textChanged.connect(self.__onURLChanged)
 
-    def __onURLChanged(self, text: str):
-        cfg.set(cfg.URL, text)
+        self.uidLabel = QLabel('UID :')
+        self.cookieLabel = QLabel('Cookie :')
+        self.uidInput = LineEdit()
+        self.cookieInput = PasswordLineEdit()
+        self.uidInput.setFixedWidth(200)
+        self.cookieInput.setFixedWidth(200)
+        self.uidInput.setPlaceholderText(self.tr('Enter UID'))
+        self.cookieInput.setPlaceholderText(self.tr('Enter Cookie'))
+        self.uidInput.setText(cfg.uid.value)
+        self.cookieInput.setText(cfg.cookie.value)
+        self.hBoxLayout.addWidget(self.uidLabel, 0, Qt.AlignRight)
+        self.hBoxLayout.addSpacing(10)
+        self.hBoxLayout.addWidget(self.uidInput, 0, Qt.AlignRight)
+        self.hBoxLayout.addSpacing(20)
+        self.hBoxLayout.addWidget(self.cookieLabel, 0, Qt.AlignRight)
+        self.hBoxLayout.addSpacing(10)
+        self.hBoxLayout.addWidget(self.cookieInput, 0, Qt.AlignRight)
+        self.hBoxLayout.addSpacing(16)
+        self.uidInput.textChanged.connect(self.__onUIDChanged)
+        self.cookieInput.textChanged.connect(self.__onCookieChanged)
+
+    def __onUIDChanged(self, text: str):
+        cfg.set(cfg.uid, text)
+
+    def __onCookieChanged(self, text: str):
+        cfg.set(cfg.cookie, text)
+
 
 class ColorSettingCard(ExpandGroupSettingCard):
     colorChanged = pyqtSignal(QColor)

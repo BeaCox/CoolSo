@@ -27,9 +27,11 @@ class Config(QConfig):
 
     folder = ConfigItem("ImageSource", "Folders", [], FolderListValidator(), restart=True)
 
-    URL = ConfigItem(
-        "ImageSource", "URL", "", restart=True)
+    uid = ConfigItem(
+        "Pixiv", "UID", "")
 
+    cookie = ConfigItem(
+        "Pixiv", "Cookie", "")
 
 
 URL = "https://github.com/BeaCox/CoolSo"
