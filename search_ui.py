@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QStackedW
 from qfluentwidgets import (FluentIcon, PlainTextEdit, isDarkTheme, InfoBar, PushButton, FlowLayout, SimpleCardWidget,
                             ImageLabel, SingleDirectionScrollArea, SegmentedWidget, BodyLabel, PrimaryPushButton,
                             CommandBarView, Action, Flyout, FlyoutAnimationType, SmoothMode, RadioButton,
-                            ExpandGroupSettingCard, LineEdit, ComboBox,)
+                            ExpandGroupSettingCard, LineEdit, ComboBox, Slider, SpinBox)
 from PyQt5.QtGui import QFont, QPixmap, QImage, QKeySequence, QIcon
 
 import utils
@@ -25,11 +25,11 @@ class SearchInterface(QWidget):
         super().__init__(parent)
         layout = QVBoxLayout()
         self.mongo_collection = utils.get_mongo_collection()
-        self.inputCard = SearchMethods()
+        self.inputCard = SearchMethods(parent=self)
         self.inputCard.setFocus()
         self.setFocusPolicy(Qt.StrongFocus)
         QTimer.singleShot(0, self.inputCard.ImageInterface.setFocus)
-        self.inputCard.setFixedHeight(250)
+        self.updateInputCardHeight()
         self.search_options = SearchOptionCard(FluentIcon.FILTER, self.tr("Search Options"))
         self.outputCard = ImageGallery()
         if search_type == "local":
@@ -68,10 +68,20 @@ class SearchInterface(QWidget):
                         parent=self
                     ).show()
 
+    def updateInputCardHeight(self):
+        currentWidget = self.inputCard.stackedWidget.currentWidget()
+        if currentWidget == self.inputCard.PromptInterface or currentWidget == self.inputCard.OCRInterface:
+            self.inputCard.setFixedHeight(200)
+        elif currentWidget == self.inputCard.ImageInterface:
+            self.inputCard.setFixedHeight(300)
+        elif currentWidget == self.inputCard.FusionInterface:
+            self.inputCard.setFixedHeight(350)
+
+
 class SearchMethods(SimpleCardWidget):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
         self.resize(400, 400)
 
         self.pivot = SegmentedWidget(self)
@@ -82,10 +92,12 @@ class SearchMethods(SimpleCardWidget):
         self.PromptInterface = PromptInterface()
         self.OCRInterface = OCRInterface()
         self.ImageInterface = ImageInterface()
+        self.FusionInterface = FusionInterface()
 
         self.addSubInterface(self.PromptInterface, 'PromptInterface', self.tr('By Prompt'))
         self.addSubInterface(self.OCRInterface, 'OCRInterface', self.tr('By OCR'))
         self.addSubInterface(self.ImageInterface, 'ImageInterface', self.tr('By Image'))
+        self.addSubInterface(self.FusionInterface, 'FusionInterface', self.tr('Fusion'))
 
         self.clearButton = PushButton(FluentIcon.BROOM, self.tr("Reset"))
         self.clearButton.clicked.connect(self.onClearButtonClicked)
@@ -108,6 +120,7 @@ class SearchMethods(SimpleCardWidget):
         self.vBoxLayout.addLayout(buttonsLayout)
 
         self.stackedWidget.currentChanged.connect(self.onCurrentIndexChanged)
+        self.stackedWidget.currentChanged.connect(self.parent().updateInputCardHeight)
         self.stackedWidget.setCurrentWidget(self.PromptInterface)
         self.pivot.setCurrentItem(self.PromptInterface.objectName())
 
@@ -299,8 +312,7 @@ class ImageInterface(SimpleCardWidget):
             ).show()
             return
 
-        scaledPixmap = self.scaleToSize(pixmap, 500, 135)
-
+        scaledPixmap = self.scaleToSize(pixmap, 430, 180)
         self.imageLabel.setPixmap(scaledPixmap)
         self.textLabel.setVisible(False)
         self.imageLabel.setVisible(True)
@@ -319,6 +331,40 @@ class ImageInterface(SimpleCardWidget):
 
         pil_image = Image.open(io.BytesIO(qbyte_array.data()))
         return pil_image
+
+
+class FusionInterface(SimpleCardWidget):
+    def __init__(self):
+        super().__init__()
+        self.inputBoxLayout = QHBoxLayout()
+        self.sliderBoxLayout = QHBoxLayout()
+        self.vBoxLayout = QVBoxLayout()
+        self.propmtInput = PromptInterface()
+        self.imageInput = ImageInterface()
+        self.propmtInput.setFixedWidth(400)
+        self.weightLabel = BodyLabel(self.tr("Percentage weight of prompt:"))
+        self.weightSlider = Slider(Qt.Horizontal)
+        self.weightBox = SpinBox()
+
+        self.inputBoxLayout.addWidget(self.propmtInput)
+        self.inputBoxLayout.addWidget(self.imageInput)
+        self.sliderBoxLayout.addWidget(self.weightLabel)
+        self.sliderBoxLayout.addWidget(self.weightBox)
+        self.sliderBoxLayout.addWidget(self.weightSlider)
+        self.vBoxLayout.addLayout(self.inputBoxLayout)
+        self.vBoxLayout.addLayout(self.sliderBoxLayout)
+        self.setLayout(self.vBoxLayout)
+
+        self.initUI()
+
+    def initUI(self):
+        self.weightSlider.setRange(0, 100)
+        self.weightSlider.setValue(50)
+        self.weightBox.setRange(0, 100)
+        self.weightBox.setValue(50)
+
+        self.weightSlider.valueChanged.connect(self.weightBox.setValue)
+        self.weightBox.valueChanged.connect(self.weightSlider.setValue)
 
 
 class SearchOptionCard(ExpandGroupSettingCard):
