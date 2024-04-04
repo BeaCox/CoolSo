@@ -13,6 +13,10 @@ models/*
 
 # test images
 test_images/*
+image_remote/*
+
+# log
+fail_log.txt
 
 # C extensions
 *.so

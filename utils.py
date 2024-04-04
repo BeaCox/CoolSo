@@ -70,7 +70,7 @@ def get_file_type(image_path: str) -> str:
 
 
 @lru_cache(maxsize=1)
-def get_mongo_collection() -> Collection:
+def get_mongo_collection(isRemote=False) -> Collection:
     """
     Get MongoDB collection based on configuration settings.
 
@@ -79,7 +79,10 @@ def get_mongo_collection() -> Collection:
     """
     config = get_config()
     mongo_client = pymongo.MongoClient("mongodb://{}:{}/".format(config['mongodb-host'], config['mongodb-port']))
-    mongo_collection = mongo_client[config['mongodb-database']][config['mongodb-collection']]
+    if isRemote:
+        mongo_collection = mongo_client[config['mongodb-database']][config['mongodb-collection-remote']]
+    else:
+        mongo_collection = mongo_client[config['mongodb-database']][config['mongodb-collection']]
     return mongo_collection
 
 
@@ -116,3 +119,5 @@ def get_full_path(basedir: str, basename: str) -> str:
     """
     md5hash, ext = basename.split(".")
     return "{}/{}/{}/{}".format(basedir, ext, md5hash[:2], basename)
+
+def get_remote_source
