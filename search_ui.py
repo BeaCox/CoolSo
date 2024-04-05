@@ -53,20 +53,24 @@ class SearchInterface(QWidget):
         mimeData = clipboard.mimeData()
         if mimeData.hasImage():
             image = QImage(mimeData.imageData())
-            self.inputCard.ImageInterface.setImage(image)
+            if isinstance(self.inputCard.stackedWidget.currentWidget(), ImageInterface):
+                self.inputCard.ImageInterface.setImage(image)
+            elif isinstance(self.inputCard.stackedWidget.currentWidget(), FusionInterface):
+                self.inputCard.FusionInterface.imageInput.setImage(image)
+            else:
+                pass
+
         elif mimeData.hasUrls():
             urls = mimeData.urls()
-            if urls:
-                path = urls[0].toLocalFile()
-                image = QImage(path)
-                if not image.isNull():
+            if len(urls) > 0:
+                url = urls[0].toLocalFile()
+                image = QImage(url)
+                if isinstance(self.inputCard.stackedWidget.currentWidget(), ImageInterface):
                     self.inputCard.ImageInterface.setImage(image)
+                elif isinstance(self.inputCard.stackedWidget.currentWidget(), FusionInterface):
+                    self.inputCard.FusionInterface.imageInput.setImage(image)
                 else:
-                    InfoBar.warning(
-                        title=self.tr("Error"),
-                        content=self.tr("Cannot load image from path."),
-                        parent=self
-                    ).show()
+                    pass
 
     def updateInputCardHeight(self):
         currentWidget = self.inputCard.stackedWidget.currentWidget()
@@ -341,7 +345,7 @@ class FusionInterface(SimpleCardWidget):
         self.vBoxLayout = QVBoxLayout()
         self.propmtInput = PromptInterface()
         self.imageInput = ImageInterface()
-        self.propmtInput.setFixedWidth(400)
+        self.imageInput.setFixedWidth(460)
         self.weightLabel = BodyLabel(self.tr("Percentage weight of prompt:"))
         self.weightSlider = Slider(Qt.Horizontal)
         self.weightBox = SpinBox()

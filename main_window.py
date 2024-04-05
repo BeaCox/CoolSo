@@ -15,17 +15,6 @@ from search_ui import SearchInterface
 from settings import SettingInterface
 
 
-class Widget(QFrame):
-
-    def __init__(self, text: str, parent=None):
-        super().__init__(parent=parent)
-        self.label = QLabel(text, self)
-        self.label.setAlignment(Qt.AlignCenter)
-        self.hBoxLayout = QHBoxLayout(self)
-        self.hBoxLayout.addWidget(self.label, 1, Qt.AlignCenter)
-        self.setObjectName(text.replace(' ', '-'))
-
-
 class Window(FramelessWindow):
 
     def __init__(self):
@@ -51,13 +40,7 @@ class Window(FramelessWindow):
         # create sub interface
         self.localSearchInterface = SearchInterface("local")
         self.onlineSearchInterface = SearchInterface("online")
-        self.historyInterface = Widget(self.tr("To be finished..."), self)
         self.settingInterface = SettingInterface()
-
-        self.stackWidget.addWidget(self.localSearchInterface)
-        self.stackWidget.addWidget(self.onlineSearchInterface)
-        self.stackWidget.addWidget(self.historyInterface)
-        self.stackWidget.addWidget(self.settingInterface)
 
         # initialize layout
         self.initLayout()
@@ -81,7 +64,6 @@ class Window(FramelessWindow):
     def initNavigation(self):
         self.addSubInterface(self.localSearchInterface, FIF.HOME, self.tr("Local Search"))
         self.addSubInterface(self.onlineSearchInterface, FIF.GLOBE, self.tr("Pivix Search"))
-        self.addSubInterface(self.historyInterface, FIF.HISTORY, self.tr("History"))
         # add item to bottom
         self.navigationInterface.addItem(
             routeKey='switch-theme',

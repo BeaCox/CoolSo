@@ -119,5 +119,3 @@ def get_full_path(basedir: str, basename: str) -> str:
     """
     md5hash, ext = basename.split(".")
     return "{}/{}/{}/{}".format(basedir, ext, md5hash[:2], basename)
-
-def get_remote_source
