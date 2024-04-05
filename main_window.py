@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtCore import Qt, QTimer, QSize, QTranslator
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QStackedWidget, QHBoxLayout, QLabel, QWidget, QFrame
+from PyQt5.QtWidgets import QApplication, QStackedWidget, QHBoxLayout, QWidget
 
 from qfluentwidgets import (NavigationItemPosition, isDarkTheme, setTheme, Theme, qconfig, SplashScreen,
                             FluentTranslator, NavigationInterface)
@@ -11,8 +11,9 @@ from qframelesswindow import FramelessWindow, StandardTitleBar
 
 from config import cfg
 from import_images import ImportThread
-from search_ui import SearchInterface
-from settings import SettingInterface
+from page.local_search import LocalSearchInterface
+from page.pixiv_search import PixivSearchInterface
+from page.settings import SettingInterface
 
 
 class Window(FramelessWindow):
@@ -33,13 +34,14 @@ class Window(FramelessWindow):
 
         self.hBoxLayout = QHBoxLayout(self)
         self.navigationInterface = NavigationInterface(self, showMenuButton=True)
+        self.navigationInterface.setExpandWidth(230)
         self.stackWidget = QStackedWidget(self)
 
         cfg.themeChanged.connect(self.onThemeChanged)
 
         # create sub interface
-        self.localSearchInterface = SearchInterface("local")
-        self.onlineSearchInterface = SearchInterface("online")
+        self.localSearchInterface = LocalSearchInterface()
+        self.pixivSearchInterface = PixivSearchInterface()
         self.settingInterface = SettingInterface()
 
         # initialize layout
@@ -63,7 +65,7 @@ class Window(FramelessWindow):
 
     def initNavigation(self):
         self.addSubInterface(self.localSearchInterface, FIF.HOME, self.tr("Local Search"))
-        self.addSubInterface(self.onlineSearchInterface, FIF.GLOBE, self.tr("Pivix Search"))
+        self.addSubInterface(self.pixivSearchInterface, FIF.GLOBE, self.tr("Pivix Search"))
         # add item to bottom
         self.navigationInterface.addItem(
             routeKey='switch-theme',
@@ -81,7 +83,7 @@ class Window(FramelessWindow):
         self.navigationInterface.setCurrentItem(initialWidget.objectName())
 
     def initWindow(self):
-        self.resize(1010, 800)
+        self.resize(980, 760)
         self.setWindowIcon(QIcon('resource/logo.ico'))
         self.setWindowTitle('CoolSo')
         self.titleBar.setAttribute(Qt.WA_StyledBackground)
