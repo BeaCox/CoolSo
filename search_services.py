@@ -18,13 +18,13 @@ def cosine_similarity(query_feature, feature_list):
 
 
 class SearchService:
-    def __init__(self):
+    def __init__(self, isRemote=False):
         self.config = utils.get_config()
         self.device = self.config['device']
         self.feat_dim = utils.get_feature_size(self.config['clip-model'])
 
         self.model = get_model()
-        self.mongo_collection = utils.get_mongo_collection()
+        self.mongo_collection = utils.get_mongo_collection(isRemote)
         self._MAX_SPLIT_SIZE = 8192
 
     def search_nearest_clip_feature(self, query_feature, topn=20):

@@ -1,13 +1,9 @@
-import os
-
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QStackedWidget, QApplication
 from qfluentwidgets import FluentIcon, InfoBar, PushButton, SimpleCardWidget, SegmentedWidget, PrimaryPushButton
 from PyQt5.QtGui import QImage, QKeySequence
 
 import utils
-import clip_model
-import ocr_model
 from components.fusion_input import FusionInput
 from components.image_gallery import ImageGallery
 from components.image_input import ImageInput
@@ -16,7 +12,6 @@ from components.text_input import PromptInput, OCRInput
 from config import cfg
 from import_remote import BookmarkCrawler, UserCrawler, KeywordCrawler
 from search_services import SearchService
-from import_images import import_single_image
 
 class PixivSearchInterface(QWidget):
     def __init__(self, parent=None):
@@ -131,46 +126,6 @@ class SearchMethods(SimpleCardWidget):
             onClick=lambda: self.stackedWidget.setCurrentWidget(widget),
         )
 
-    def onSearchButtonClicked(self):
-        currentInterface = self.stackedWidget.currentWidget()
-        if self.parent().mongo_collection.count_documents({}) == 0:
-            InfoBar.error(
-                title=self.tr("Error"),
-                content=self.tr("Database is empty, check the settings or update."),
-                parent=self
-            ).show()
-            return
-        elif cfg.importFinished is False:
-            InfoBar.error(
-                title=self.tr("Error"),
-                content=self.tr("Importing images, please wait."),
-                parent=self
-            ).show()
-            return
-        else:
-            if isinstance(currentInterface, PromptInput):
-                query = currentInterface.toPlainText()
-                results = self.search_service.search_image(query, topn=20)
-            elif isinstance(currentInterface, OCRInput):
-                query = currentInterface.toPlainText()
-                results = self.search_service.search_ocr(query, topn=20)
-            elif isinstance(currentInterface, ImageInput):
-                image = currentInterface.convertToImage(currentInterface.currentImage)
-                if image is None:
-                    InfoBar.warning(
-                        title=self.tr("Error"),
-                        content=self.tr("Please upload an image first."),
-                        parent=self
-                    ).show()
-                    return
-                results = self.search_service.search_image(image, topn=20)
-            else:
-                print("Unknown interface")
-                return
-
-            filenames = [filename for filename, _ in results]
-            self.parent().outputCard.updateGallery(filenames)
-
     def onClearButtonClicked(self):
         currentInterface = self.stackedWidget.currentWidget()
         if isinstance(currentInterface, PromptInput):
@@ -187,32 +142,119 @@ class SearchMethods(SimpleCardWidget):
             return
         self.parent().outputCard.updateGallery()
 
+    def onSearchButtonClicked(self):
+        global results
+        if not self.checkDatabase():
+            return
+
+        currentInterface = self.stackedWidget.currentWidget()
+        if isinstance(currentInterface, (PromptInput, OCRInput, ImageInput)):
+            query = self.getQueryFromInterface(currentInterface)
+            if query is None:
+                return
+            if isinstance(query, str):
+                if isinstance(currentInterface, PromptInput):
+                    results = self.search_service.search_image(query, topn=20)
+                elif isinstance(currentInterface, OCRInput):
+                    results = self.search_service.search_ocr(query, topn=20)
+            elif isinstance(query, QImage):
+                results = self.search_service.search_image(query, topn=20)
+            if results is not None:
+                self.updateInterface(results)
+        else:
+            print("Unknown interface")
+
+    def checkDatabase(self):
+        if self.parent().mongo_collection.count_documents({}) == 0:
+            InfoBar.error(
+                title=self.tr("Error"),
+                content=self.tr("Database is empty, check the settings or update."),
+                parent=self
+            ).show()
+            return False
+        return True
+
+    def checkCookie(self):
+        if cfg.cookie.value == "":
+            InfoBar.error(
+                title=self.tr("Error"),
+                content=self.tr("Please enter your cookie in settings. \n Get it from F12 - Network - refresh - "
+                                "copy the cookie"),
+                parent=self
+            ).show()
+            return False
+        return True
+
+    def getQueryFromInterface(self, interface):
+        if isinstance(interface, ImageInput):
+            image = interface.convertToImage(interface.currentImage)
+            if image is None:
+                InfoBar.warning(
+                    title=self.tr("Error"),
+                    content=self.tr("Please upload an image first."),
+                    parent=self
+                ).show()
+            return image
+        else:
+            return interface.toPlainText()
+
     def onUpdateButtonClicked(self):
+        if not self.checkCookie():
+            return
         self.clearButton.setEnabled(False)
         self.searchButton.setEnabled(False)
-        print("Start updating...\n")
-        base_dirs = cfg.folder.value
-        cursor = self.parent().mongo_collection.find({}, {"filename": 1})
-        saved_filename_list = [obj["filename"] for obj in cursor]
-        current_filename_list = []
-        for base_dir in base_dirs:
-            abs_files = [os.path.join(base_dir, file) for file in os.listdir(base_dir)]
-            current_filename_list.extend(abs_files)
-
-        # 检测新增
-        cnt = 0
-        for current_filename in current_filename_list:
-            if current_filename not in saved_filename_list:
-                cnt += 1
-                import_single_image(current_filename, clip_model.get_model(),
-                                    ocr_model.get_ocr_model(),
-                                    utils.get_config(),
-                                    utils.get_mongo_collection(isRemote=True))
-
-        print("Finish updating. Updated {} item(s)".format(cnt))
+        if self.parent().search_options.buttonGroup.checkedButton() == self.parent().search_options.bookmarkOption:
+            uid = self.parent().search_options.uidInput.text() or cfg.uid.value
+            if uid:
+                app = BookmarkCrawler(uid=uid)
+            else:
+                InfoBar.error(
+                    title=self.tr("Error"),
+                    content=self.tr("Please enter target uid in settings or search options.\n Get it from profile "
+                                    "page: https://www.pixiv.net/users/{UID}"),
+                    parent=self
+                ).show()
+                self.clearButton.setEnabled(True)
+                self.searchButton.setEnabled(True)
+                return None
+        elif self.parent().search_options.buttonGroup.checkedButton() == self.parent().search_options.artistOption:
+            artist_id = self.parent().search_options.artistIdInput.text()
+            if artist_id:
+                app = UserCrawler(artist_id=artist_id)
+            else:
+                InfoBar.error(
+                    title=self.tr("Error"),
+                    content=self.tr("Please enter an artist's uid."),
+                    parent=self
+                ).show()
+                self.clearButton.setEnabled(True)
+                self.searchButton.setEnabled(True)
+                return None
+        elif self.parent().search_options.buttonGroup.checkedButton() == self.parent().search_options.keywordOption:
+            keyword = self.parent().search_options.keywordInput.text()
+            if keyword:
+                order = bool(self.parent().search_options.orderBox.currentIndex() == "Hottest")
+                mode = self.parent().search_options.restrictBox.currentText()
+                app = KeywordCrawler(keyword=keyword, order=order, mode=mode)
+            else:
+                InfoBar.error(
+                    title=self.tr("Error"),
+                    content=self.tr("Please enter a keyword."),
+                    parent=self
+                ).show()
+                self.clearButton.setEnabled(True)
+                self.searchButton.setEnabled(True)
+                return None
+        else:
+            return None
+        app.run()
         self.clearButton.setEnabled(True)
         self.searchButton.setEnabled(True)
-        self.onClearButtonClicked()  # 刷新图库
+        self.onClearButtonClicked()
+
+    def updateInterface(self, results):
+        filenames = [filename for filename, _ in results]
+        self.parent().outputCard.updateGallery(filenames)
 
     def onCurrentIndexChanged(self, index):
         widget = self.stackedWidget.widget(index)

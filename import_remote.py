@@ -16,7 +16,8 @@ import ocr_model
 from pymongo.collection import Collection
 import utils
 from datetime import datetime
-import glob
+
+from config import cfg
 
 ###################################### Tips!!! ######################################
 # if u want to show a pixiv image, u can use this function to get the image content #
@@ -57,13 +58,6 @@ NETWORK_CONFIG = {
     "HEADER": {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36",
     }
-}
-
-USER_CONFIG = {
-    # your uid , get from profile page: https://www.pixiv.net/users/{UID}
-    "USER_ID": "101646786",
-    # https://www.pixiv.net/ranking.php - F12 - Network - refresh - ranking.php - copy the cookie
-    "COOKIE": "first_visit_datetime_pc=2024-04-04%2022%3A15%3A25; cc1=2024-04-04%2022%3A15%3A25; __cf_bm=wdhpSECu9ccvqdmexsNGbzw9ALKnjIrQrFSzxloL3_E-1712236525-1.0.1.1-7qLu7BTvzXWtFzRRhrscqJbAlb8n5zKG6EM_ecx2EeMYUlO0mzvBobG5AUn6eEUbS_DIDiu29bjf7h.3xll9gZTKpbPybiU..rYAD_kdS.Y; p_ab_id=8; p_ab_id_2=7; p_ab_d_id=365498253; yuid_b=JJZ4aEA; cf_clearance=hzuyb2owmYKN3_1MpH.3rfybZwCRqAQPUa3pf2KhGMY-1712236528-1.0.1.1-jq5jFo0pno71QHwGy1dpcXCXzdxtGS12UnGoAaHJCvvwz2dQ_3cwtdNw4SAnmLO6oAergegl5CM88gaHDcYaog; _gid=GA1.2.1464907464.1712236533; PHPSESSID=101646786_rX2cfjjK5Fr9OTNJuNOcX6wUyjS9EYcl; device_token=19785245088c97823b5623e8298fbcd4; privacy_policy_agreement=6; c_type=24; privacy_policy_notification=0; a_type=0; b_type=1; _ga_MZ1NL4PHH0=GS1.1.1712236542.1.0.1712236793.0.0.0; _im_vid=01HTMM8BRGNV53GQB9GZJYYREG; QSI_S_ZN_5hF4My7Ad6VNNAi=v:0:0; login_ever=yes; _gcl_au=1.1.1142587435.1712236858; _ga_75BBYNYN9J=GS1.1.1712236531.1.1.1712236861.0.0.0; _ga=GA1.2.112172624.1712236531; _gat_UA-1830249-3=1"
 }
 
 DOWNLOAD_CONFIG = {
@@ -348,7 +342,7 @@ class Collector():
                 additional_headers = [
                     {
                         "Referer": f"https://www.pixiv.net/artworks/{illust_id}",
-                        "x-user-id": USER_CONFIG["USER_ID"]
+                        "x-user-id": cfg.uid.value
                     }
                     for illust_id in self.id_group]
                 for urls in executor.map(collect, zip(
@@ -400,9 +394,9 @@ def selectKeyword(response: Response) -> Set[str]:
     
 
 class BookmarkCrawler():
-    def __init__(self, n_images=200, capacity=1024):
+    def __init__(self, n_images=200, capacity=1024, uid=cfg.uid.value):
         self.n_images = n_images
-        self.uid = USER_CONFIG["USER_ID"]
+        self.uid = uid
         self.url = f"https://www.pixiv.net/ajax/user/{self.uid}/illusts"
 
         self.downloader = Downloader(capacity)
@@ -412,7 +406,7 @@ class BookmarkCrawler():
         url = self.url + "/bookmark/tags?lang=zh"
         printInfo("===== requesting bookmark count =====")
 
-        headers = {"COOKIE": USER_CONFIG["COOKIE"]}
+        headers = {"COOKIE": cfg.cookie.value}
         headers.update(NETWORK_CONFIG["HEADER"])
         error_output = OUTPUT_CONFIG["PRINT_ERROR"]
         for i in range(DOWNLOAD_CONFIG["N_TIMES"]):
@@ -452,7 +446,7 @@ class BookmarkCrawler():
         n_thread = DOWNLOAD_CONFIG["N_THREAD"]
         with futures.ThreadPoolExecutor(n_thread) as executor:
             with tqdm(total=len(urls), desc="collecting ids") as pbar:
-                additional_headers = {"COOKIE": USER_CONFIG["COOKIE"]}
+                additional_headers = {"COOKIE": cfg.cookie.value}
                 for image_ids in executor.map(collect, zip(
                         urls, [selectBookmark] * len(urls),
                         [additional_headers] * len(urls))):
@@ -481,8 +475,8 @@ class UserCrawler():
         url = f"https://www.pixiv.net/ajax/user/{self.artist_id}/profile/all?lang=zh"
         additional_headers = {
             "Referer": f"https://www.pixiv.net/users/{self.artist_id}/illustrations",
-            "x-user-id": USER_CONFIG["USER_ID"],
-            "COOKIE": USER_CONFIG["COOKIE"]
+            "x-user-id": cfg.uid.value,
+            "COOKIE": cfg.cookie.value
         }
         image_ids = collect(
             (url, selectUser, additional_headers))
@@ -527,7 +521,7 @@ class KeywordCrawler():
         n_thread = DOWNLOAD_CONFIG["N_THREAD"]
         with futures.ThreadPoolExecutor(n_thread) as executor:
             with tqdm(total=len(urls), desc="collecting ids") as pbar:
-                additional_headers = {"COOKIE": USER_CONFIG["COOKIE"]}
+                additional_headers = {"COOKIE": cfg.cookie.value}
                 for image_ids in executor.map(collect, zip(
                         urls, [selectKeyword] * len(urls),
                         [additional_headers] * len(urls))):
