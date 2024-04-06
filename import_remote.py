@@ -16,7 +16,6 @@ import ocr_model
 from pymongo.collection import Collection
 import utils
 from datetime import datetime
-
 from config import cfg
 
 ###################################### Tips!!! ######################################
@@ -145,7 +144,7 @@ def import_single_image(filename: str, url: str, clip: clip_model.CLIPModel, ocr
         'ocr_text': ocr_text
     }
 
-    ret = mongo_collection.insert_one(document)
+    mongo_collection.insert_one(document)
 
     try:
         os.remove(filename)
@@ -304,6 +303,7 @@ class Collector():
             self.id_group.add(image_id)
 
     def collectTags(self):
+        checkDir(DOWNLOAD_CONFIG["STORE_PATH"])
         printInfo("===== tag collector start =====")
 
         self.tags: Dict[str, List] = dict()
