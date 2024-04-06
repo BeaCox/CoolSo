@@ -4,6 +4,7 @@ from qfluentwidgets import SingleDirectionScrollArea, SmoothMode, SimpleCardWidg
 import utils
 from components.image_card import ImageCard
 from config import cfg
+from import_remote import getImageResponseContent
 
 
 class ImageGallery(SingleDirectionScrollArea):
@@ -34,14 +35,15 @@ class ImageGallery(SingleDirectionScrollArea):
             cursor = utils.get_mongo_collection(isRemote=self.isRemote).find({}, {"filename": 1})
             image_paths = [obj["filename"] for obj in cursor]
             for imagePath in image_paths:
-                imageCard = ImageCard(imagePath)
-                imageCard.setFixedSize(162, 162)
-                self.imageFlow.addWidget(imageCard)
+                self.addImageCard(imagePath)
         else:
             for imagePath in filename:
-                imageCard = ImageCard(imagePath)
-                imageCard.setFixedSize(162, 162)
-                self.imageFlow.addWidget(imageCard)
+                self.addImageCard(imagePath)
+
+    def addImageCard(self, imagePath):
+        imageCard = ImageCard(imagePath, isRemote=self.isRemote)
+        imageCard.setFixedSize(162, 162)
+        self.imageFlow.addWidget(imageCard)
 
     def __setQss(self):
         self.imageContainer.setObjectName('imageContainer')

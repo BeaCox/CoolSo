@@ -92,7 +92,7 @@ class SearchMethods(SimpleCardWidget):
         self.addSubInterface(self.ImageInterface, 'ImageInterface', self.tr('By Image'))
         self.addSubInterface(self.FusionInterface, 'FusionInterface', self.tr('Fusion'))
 
-        self.clearButton = PushButton(FluentIcon.BROOM, self.tr("Reset"))
+        self.clearButton = PushButton(FluentIcon.DELETE, self.tr("Clear"))
         self.clearButton.clicked.connect(self.onClearButtonClicked)
         self.searchButton = PrimaryPushButton(FluentIcon.SEARCH, self.tr("Search"))
         self.searchButton.clicked.connect(self.onSearchButtonClicked)
@@ -140,7 +140,6 @@ class SearchMethods(SimpleCardWidget):
         else:
             print("Unknown interface")
             return
-        self.parent().outputCard.updateGallery()
 
     def onSearchButtonClicked(self):
         global results
@@ -160,7 +159,8 @@ class SearchMethods(SimpleCardWidget):
             elif isinstance(query, QImage):
                 results = self.search_service.search_image(query, topn=20)
             if results is not None:
-                self.updateInterface(results)
+                filenames = [filename for filename, _ in results]
+                self.parent().outputCard.updateGallery(filenames)
         else:
             print("Unknown interface")
 
@@ -196,6 +196,13 @@ class SearchMethods(SimpleCardWidget):
                 ).show()
             return image
         else:
+            if interface.toPlainText() == "":
+                InfoBar.warning(
+                    title=self.tr("Error"),
+                    content=self.tr("Please enter your input."),
+                    parent=self
+                ).show()
+                return None
             return interface.toPlainText()
 
     def onUpdateButtonClicked(self):
@@ -247,14 +254,11 @@ class SearchMethods(SimpleCardWidget):
                 return None
         else:
             return None
+        self.parent().mongo_collection.drop()
         app.run()
         self.clearButton.setEnabled(True)
         self.searchButton.setEnabled(True)
-        self.onClearButtonClicked()
-
-    def updateInterface(self, results):
-        filenames = [filename for filename, _ in results]
-        self.parent().outputCard.updateGallery(filenames)
+        self.parent().outputCard.updateGallery()
 
     def onCurrentIndexChanged(self, index):
         widget = self.stackedWidget.widget(index)

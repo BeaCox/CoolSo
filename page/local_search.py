@@ -94,7 +94,7 @@ class SearchMethods(SimpleCardWidget):
         self.addSubInterface(self.ImageInterface, 'ImageInterface', self.tr('By Image'))
         self.addSubInterface(self.FusionInterface, 'FusionInterface', self.tr('Fusion'))
 
-        self.clearButton = PushButton(FluentIcon.BROOM, self.tr("Reset"))
+        self.clearButton = PushButton(FluentIcon.DELETE, self.tr("Clear"))
         self.clearButton.clicked.connect(self.onClearButtonClicked)
         self.searchButton = PrimaryPushButton(FluentIcon.SEARCH, self.tr("Search"))
         self.searchButton.clicked.connect(self.onSearchButtonClicked)
@@ -130,44 +130,28 @@ class SearchMethods(SimpleCardWidget):
         )
 
     def onSearchButtonClicked(self):
-        currentInterface = self.stackedWidget.currentWidget()
-        if self.parent().mongo_collection.count_documents({}) == 0:
-            InfoBar.error(
-                title=self.tr("Error"),
-                content=self.tr("Database is empty, check the settings or update."),
-                parent=self
-            ).show()
+        global results
+        if not self.checkImportStatus():
             return
-        elif cfg.importFinished is False:
-            InfoBar.error(
-                title=self.tr("Error"),
-                content=self.tr("Importing images, please wait."),
-                parent=self
-            ).show()
-            return
-        else:
-            if isinstance(currentInterface, PromptInput):
-                query = currentInterface.toPlainText()
-                results = self.search_service.search_image(query, topn=20)
-            elif isinstance(currentInterface, OCRInput):
-                query = currentInterface.toPlainText()
-                results = self.search_service.search_ocr(query, topn=20)
-            elif isinstance(currentInterface, ImageInput):
-                image = currentInterface.convertToImage(currentInterface.currentImage)
-                if image is None:
-                    InfoBar.warning(
-                        title=self.tr("Error"),
-                        content=self.tr("Please upload an image first."),
-                        parent=self
-                    ).show()
-                    return
-                results = self.search_service.search_image(image, topn=20)
-            else:
-                print("Unknown interface")
-                return
 
-            filenames = [filename for filename, _ in results]
-            self.parent().outputCard.updateGallery(filenames)
+        currentInterface = self.stackedWidget.currentWidget()
+        if isinstance(currentInterface, (PromptInput, OCRInput, ImageInput)):
+            query = self.getQueryFromInterface(currentInterface)
+            if query is None:
+                return
+            if isinstance(query, str):
+                if isinstance(currentInterface, PromptInput):
+                    results = self.search_service.search_image(query, topn=20)
+                elif isinstance(currentInterface, OCRInput):
+                    results = self.search_service.search_ocr(query, topn=20)
+            elif isinstance(query, QImage):
+                results = self.search_service.search_image(query, topn=20)
+            if results is not None:
+                filenames = [filename for filename, _ in results]
+                self.parent().outputCard.updateGallery(filenames)
+        else:
+            print("Unknown interface")
+
 
     def onClearButtonClicked(self):
         currentInterface = self.stackedWidget.currentWidget()
@@ -183,9 +167,10 @@ class SearchMethods(SimpleCardWidget):
         else:
             print("Unknown interface")
             return
-        self.parent().outputCard.updateGallery()
 
     def onUpdateButtonClicked(self):
+        if not self.checkImportStatus():
+            return
         self.clearButton.setEnabled(False)
         self.searchButton.setEnabled(False)
         print("Start updating...\n")
@@ -210,14 +195,41 @@ class SearchMethods(SimpleCardWidget):
         print("Finish updating. Updated {} item(s)".format(cnt))
         self.clearButton.setEnabled(True)
         self.searchButton.setEnabled(True)
-        self.onClearButtonClicked() # 刷新图库
+        self.parent().outputCard.updateGallery()
 
     def onCurrentIndexChanged(self, index):
         widget = self.stackedWidget.widget(index)
         self.pivot.setCurrentItem(widget.objectName())
 
+    def checkImportStatus(self):
+        if cfg.importFinished is False:
+            InfoBar.error(
+                title=self.tr("Error"),
+                content=self.tr("Importing images, please wait."),
+                parent=self
+            ).show()
+            return False
+        return True
 
-
+    def getQueryFromInterface(self, interface):
+        if isinstance(interface, ImageInput):
+            image = interface.convertToImage(interface.currentImage)
+            if image is None:
+                InfoBar.warning(
+                    title=self.tr("Error"),
+                    content=self.tr("Please upload an image first."),
+                    parent=self
+                ).show()
+            return image
+        else:
+            if interface.toPlainText() == "":
+                InfoBar.warning(
+                    title=self.tr("Error"),
+                    content=self.tr("Please enter your input."),
+                    parent=self
+                ).show()
+                return None
+            return interface.toPlainText()
 
 
 

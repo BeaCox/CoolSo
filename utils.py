@@ -1,4 +1,6 @@
 import os
+import subprocess
+
 import yaml
 import hashlib
 from functools import lru_cache
@@ -56,15 +58,21 @@ def get_file_type(image_path: str) -> str:
     Returns:
     - str: File type (e.g., 'png', 'jpg', 'gif', 'bmp') or None if it cannot be determined.
     """
-    libmagic_output = os.popen("file '" + image_path + "'").read().strip()
-    libmagic_output = libmagic_output.split(":", 1)[1]
-    if "PNG" in libmagic_output:
+    try:
+        result = subprocess.run(["file", "--mime-type", "-b", image_path], capture_output=True, text=True,
+                                encoding='utf-8')
+        libmagic_output = result.stdout.strip()
+    except Exception as e:
+        print(f"Error executing file command: {e}")
+        return None
+
+    if "png" in libmagic_output:
         return "png"
-    if "JPEG" in libmagic_output:
+    if "jpeg" in libmagic_output:
         return "jpg"
-    if "GIF" in libmagic_output:
+    if "gif" in libmagic_output:
         return "gif"
-    if "PC bitmap" in libmagic_output:
+    if "bmp" in libmagic_output:
         return "bmp"
     return None
 

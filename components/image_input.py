@@ -95,6 +95,8 @@ class ImageInput(SimpleCardWidget):
         qbyte_array = QByteArray()
         buffer = QBuffer(qbyte_array)
         buffer.open(QIODevice.WriteOnly)
+        if qimage is None:
+            return None
         qimage.save(buffer, "PNG")
 
         pil_image = Image.open(io.BytesIO(qbyte_array.data()))

@@ -3,12 +3,14 @@ from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication, QFileDialog
 from qfluentwidgets import ImageLabel, CommandBarView, Action, FluentIcon, FlyoutAnimationType, Flyout, InfoBar
 
+from import_remote import getImageResponseContent
+
 
 class ImageCard(ImageLabel):
-    def __init__(self, imagePath, parent=None):
+    def __init__(self, imagePath, parent=None, isRemote=False):
         super().__init__(parent)
         self.imagePath = imagePath
-        self.image = QImage(imagePath)
+        self.image = QImage(imagePath) if not isRemote else getImageResponseContent(imagePath)
         self.setBorderRadius(8, 8, 8, 8)
 
     def mousePressEvent(self, event):

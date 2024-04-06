@@ -3,6 +3,8 @@ import json
 import os
 import re
 import time
+
+from PyQt5.QtGui import QImage
 from tqdm import tqdm
 import concurrent.futures as futures
 from typing import Callable, Dict, Iterable, Optional, Tuple, List, Set
@@ -111,7 +113,7 @@ def checkDir(dir_path):
 def import_single_image(filename: str, url: str, clip: clip_model.CLIPModel, ocr: ocr_model.OCRModel,
                         config: dict, mongo_collection: Collection) -> None:
     # if there is an item with the same url, then skip
-    if mongo_collection.find_one({"url": url}) is not None:
+    if mongo_collection.find_one({"filename": url}) is not None:
         print("Skipping file:", filename)
         return
     filetype = utils.get_file_type(filename)
@@ -134,7 +136,7 @@ def import_single_image(filename: str, url: str, clip: clip_model.CLIPModel, ocr
 
     # Save to MongoDB
     document = {
-        'url': url,
+        'filename': url,
         'extension': filetype,
         'height': image_size[1],
         'width': image_size[0],
@@ -164,7 +166,8 @@ def getImageResponseContent(url):
     proxies=NETWORK_CONFIG["PROXY"],
     timeout=(3, 10))
 
-    return response.content
+    image = QImage.fromData(response.content)
+    return image
 
 class Downloader():
     def __init__(self, capacity):
@@ -394,7 +397,7 @@ def selectKeyword(response: Response) -> Set[str]:
     
 
 class BookmarkCrawler():
-    def __init__(self, n_images=200, capacity=1024, uid=cfg.uid.value):
+    def __init__(self, n_images=20, capacity=1024, uid=cfg.uid.value):
         self.n_images = n_images
         self.uid = uid
         self.url = f"https://www.pixiv.net/ajax/user/{self.uid}/illusts"
@@ -493,7 +496,7 @@ class UserCrawler():
 class KeywordCrawler():
     def __init__(self, keyword: str,
                  order: bool = False, mode: str = "safe",
-                 n_images=200, capacity=1024):
+                 n_images=20, capacity=1024):
         assert mode in ["safe", "r18", "all"]
 
         self.keyword = keyword
