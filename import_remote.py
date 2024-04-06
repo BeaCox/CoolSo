@@ -297,13 +297,13 @@ class Collector():
     def __init__(self, downloader: Downloader):
         self.id_group: Set[str] = set()  # illust_id
         self.downloader = downloader
+        checkDir(DOWNLOAD_CONFIG["STORE_PATH"])
 
     def add(self, image_ids: Iterable[str]):
         for image_id in image_ids:
             self.id_group.add(image_id)
 
     def collectTags(self):
-        checkDir(DOWNLOAD_CONFIG["STORE_PATH"])
         printInfo("===== tag collector start =====")
 
         self.tags: Dict[str, List] = dict()

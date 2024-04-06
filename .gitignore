@@ -17,6 +17,7 @@ image_remote/*
 
 # log
 fail_log.txt
+*.txt
 
 # C extensions
 *.so
