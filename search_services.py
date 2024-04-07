@@ -113,7 +113,7 @@ class SearchService:
         filename_list, score_list = self.search_nearest_clip_feature(target_feature, topn=int(topn))
         return self.convert_result(filename_list, score_list)
 
-    def search_fusion(self, prompt, image, topn, weight):
+    def search_fusion(self, prompt, image, weight, topn):
         '''
         prompt:描述
         image:图片

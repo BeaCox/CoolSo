@@ -1,5 +1,6 @@
 import os
 
+from PIL.Image import Image
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QStackedWidget, QApplication
 from qfluentwidgets import FluentIcon, InfoBar, PushButton, SimpleCardWidget, SegmentedWidget, PrimaryPushButton
@@ -130,28 +131,28 @@ class SearchMethods(SimpleCardWidget):
         )
 
     def onSearchButtonClicked(self):
-        global results
+        results = None
         if not self.checkImportStatus():
             return
-
         currentInterface = self.stackedWidget.currentWidget()
-        if isinstance(currentInterface, (PromptInput, OCRInput, ImageInput)):
-            query = self.getQueryFromInterface(currentInterface)
-            if query is None:
-                return
-            if isinstance(query, str):
-                if isinstance(currentInterface, PromptInput):
-                    results = self.search_service.search_image(query, topn=20)
-                elif isinstance(currentInterface, OCRInput):
-                    results = self.search_service.search_ocr(query, topn=20)
-            elif isinstance(query, QImage):
+        query = self.getQueryFromInterface(currentInterface)
+        if query is None:
+            return
+        if isinstance(currentInterface, FusionInput):
+            results = self.search_service.search_fusion(query['text'], query['image'], query['weight'], topn=20)
+        elif isinstance(query, str):
+            if isinstance(currentInterface, PromptInput):
                 results = self.search_service.search_image(query, topn=20)
-            if results is not None:
-                filenames = [filename for filename, _ in results]
-                self.parent().outputCard.updateGallery(filenames)
+            elif isinstance(currentInterface, OCRInput):
+                results = self.search_service.search_ocr(query, topn=20)
+        elif isinstance(query, Image):
+            results = self.search_service.search_image(query, topn=20)
+
+        if results is not None:
+            filenames = [filename for filename, _ in results]
+            self.parent().outputCard.updateGallery(filenames)
         else:
             print("Unknown interface")
-
 
     def onClearButtonClicked(self):
         currentInterface = self.stackedWidget.currentWidget()
@@ -221,15 +222,28 @@ class SearchMethods(SimpleCardWidget):
                     parent=self
                 ).show()
             return image
+        elif isinstance(interface, FusionInput):
+            image = interface.imageInput.convertToImage(interface.imageInput.currentImage)
+            text = interface.propmtInput.toPlainText()
+            weight = interface.weightBox.value() / 100
+            if image is None or text == "":
+                InfoBar.warning(
+                    title=self.tr("Error"),
+                    content=self.tr("Please complete both text and image inputs for fusion search."),
+                    parent=self
+                ).show()
+                return None
+            return {'image': image, 'text': text, 'weight': weight}
         else:
-            if interface.toPlainText() == "":
+            text = interface.toPlainText()
+            if text == "":
                 InfoBar.warning(
                     title=self.tr("Error"),
                     content=self.tr("Please enter your input."),
                     parent=self
                 ).show()
                 return None
-            return interface.toPlainText()
+            return text
 
 
 
