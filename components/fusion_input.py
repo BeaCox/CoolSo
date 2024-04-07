@@ -13,7 +13,7 @@ class FusionInput(SimpleCardWidget):
         self.sliderBoxLayout = QHBoxLayout()
         self.vBoxLayout = QVBoxLayout()
         self.propmtInput = PromptInput()
-        self.imageInput = ImageInput()
+        self.imageInput = ImageInput(430, 180)
         self.imageInput.setFixedWidth(460)
         self.weightLabel = BodyLabel(self.tr("Percentage weight of prompt:"))
         self.weightSlider = Slider(Qt.Horizontal)

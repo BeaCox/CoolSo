@@ -98,7 +98,7 @@ class SearchMethods(SimpleCardWidget):
         self.search_service = SearchService(isRemote=True)
         self.PromptInterface = PromptInput()
         self.OCRInterface = OCRInput()
-        self.ImageInterface = ImageInput()
+        self.ImageInterface = ImageInput(800, 180)
         self.FusionInterface = FusionInput()
 
         self.addSubInterface(self.PromptInterface, 'PromptInterface', self.tr('By Prompt'))

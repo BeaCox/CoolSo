@@ -7,11 +7,13 @@ from qfluentwidgets import SimpleCardWidget, BodyLabel, ImageLabel, InfoBar
 from PIL import Image
 
 class ImageInput(SimpleCardWidget):
-    def __init__(self):
+    def __init__(self, width, height):
         super().__init__()
         self.setAcceptDrops(True)
         self.currentImage = None
         self.initUI()
+        self.width = width
+        self.height = height
 
     def initUI(self):
         self.textLabel = BodyLabel(self.tr("Click to Upload / Drag & Drop / Paste (Ctrl + V)  an Image Here"), self)
@@ -80,7 +82,7 @@ class ImageInput(SimpleCardWidget):
             ).show()
             return
 
-        scaledPixmap = self.scaleToSize(pixmap, 430, 180)
+        scaledPixmap = self.scaleToSize(pixmap, self.width, self.height)
         self.imageLabel.setPixmap(scaledPixmap)
         self.textLabel.setVisible(False)
         self.imageLabel.setVisible(True)
