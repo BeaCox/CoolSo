@@ -4,7 +4,6 @@ from qfluentwidgets import SingleDirectionScrollArea, SmoothMode, SimpleCardWidg
 import utils
 from components.image_card import ImageCard
 from config import cfg
-from import_remote import getImageResponseContent
 
 
 class ImageGallery(SingleDirectionScrollArea):

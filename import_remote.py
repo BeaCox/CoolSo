@@ -11,7 +11,7 @@ from typing import Callable, Dict, Iterable, Optional, Tuple, List, Set
 from pyquery import PyQuery
 import urllib.parse as urlparse
 from requests.models import Response
-from functools import wraps
+from functools import wraps, lru_cache
 from threading import Lock
 import clip_model
 import ocr_model
@@ -153,6 +153,7 @@ def import_single_image(filename: str, url: str, clip: clip_model.CLIPModel, ocr
     except:
         print("remove failed")
 
+@lru_cache(maxsize=128)
 def getImageResponseContent(url):
     image_name = url[url.rfind("/") + 1:]
     result = re.search("/(\d+)_", url)
