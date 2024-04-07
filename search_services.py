@@ -113,6 +113,27 @@ class SearchService:
         filename_list, score_list = self.search_nearest_clip_feature(target_feature, topn=int(topn))
         return self.convert_result(filename_list, score_list)
 
+    def search_fusion(self, prompt, image, topn, weight):
+        '''
+        prompt:描述
+        image:图片
+        topn:显示前n匹配结果
+        weight:prompt和image权重为weight和1-weight
+        '''
+        with torch.no_grad():
+            if isinstance(prompt,str) and isinstance(image, Image.Image):
+                target_feature1 = self.model.get_text_feature(prompt)
+                image_input = self.model.preprocess(image).unsqueeze(0).to(self.model.device)
+                image_feature = self.model.model.encode_image(image_input)
+                target_feature2 = image_feature.cpu().detach().numpy()
+                w1, w2 = weight, 1-weight
+                target_feature = w1 * target_feature1 + w2 * target_feature2
+            else:
+                assert False, "Invalid query (input) type"
+
+        filename_list, score_list = self.search_nearest_clip_feature(target_feature, topn=int(topn))
+        return self.convert_result(filename_list, score_list)
+
     def search_ocr(self, query_text, topn):
         filename_list, score_list = self.search_ocr_text(query_text, topn=int(topn), )
         return self.convert_result(filename_list, score_list)
