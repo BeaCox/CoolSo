@@ -10,6 +10,7 @@ class ImageCard(ImageLabel):
     def __init__(self, imagePath, parent=None, isRemote=False):
         super().__init__(parent)
         self.imagePath = imagePath
+        self.isRemote = isRemote
         self.image = QImage(imagePath) if not isRemote else getImageResponseContent(imagePath)
         self.setBorderRadius(8, 8, 8, 8)
 
@@ -24,7 +25,10 @@ class ImageCard(ImageLabel):
         Flyout.make(view, pos, self, FlyoutAnimationType.FADE_IN)
 
     def copyImage(self):
-        pixmap = QPixmap(self.imagePath)
+        if self.isRemote:
+            pixmap = QPixmap.fromImage(self.image)
+        else:
+            pixmap = QPixmap(self.imagePath)
         if pixmap.isNull():
             InfoBar.error(
                 title=self.tr("Error"),
