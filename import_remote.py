@@ -161,12 +161,15 @@ def getImageResponseContent(url):
     headers = {"Referer": f"https://www.pixiv.net/artworks/{image_id}"}
     headers.update(NETWORK_CONFIG["HEADER"])
 
-    response = requests.get(
-    url, headers=headers,
-    proxies=NETWORK_CONFIG["PROXY"],
-    timeout=(3, 10))
+    try:
+        response = requests.get(
+        url, headers=headers,
+        proxies=NETWORK_CONFIG["PROXY"],
+        timeout=(3, 10))
 
-    image = QImage.fromData(response.content)
+        image = QImage.fromData(response.content)
+    except:
+        image = QImage.fromData(b'')
     return image
 
 class Downloader():
