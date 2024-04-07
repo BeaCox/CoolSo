@@ -96,15 +96,15 @@ class SearchMethods(SimpleCardWidget):
         self.clearButton.clicked.connect(self.onClearButtonClicked)
         self.searchButton = PrimaryPushButton(FluentIcon.SEARCH, self.tr("Search"))
         self.searchButton.clicked.connect(self.onSearchButtonClicked)
-        self.updateButton = PrimaryPushButton(FluentIcon.UPDATE, self.tr("Update"))
-        self.updateButton.clicked.connect(self.onUpdateButtonClicked)
+        self.importButton = PrimaryPushButton(FluentIcon.DOWNLOAD, self.tr("Import"))
+        self.importButton.clicked.connect(self.onImportButtonClicked)
         self.clearButton.setFixedWidth(120)
         self.searchButton.setFixedWidth(120)
-        self.updateButton.setFixedWidth(120)
+        self.importButton.setFixedWidth(120)
 
         buttonsLayout = QHBoxLayout()
         buttonsLayout.addWidget(self.clearButton)
-        buttonsLayout.addWidget(self.updateButton)
+        buttonsLayout.addWidget(self.importButton)
         buttonsLayout.addWidget(self.searchButton)
 
         self.vBoxLayout.addWidget(self.pivot)
@@ -205,7 +205,7 @@ class SearchMethods(SimpleCardWidget):
                 return None
             return interface.toPlainText()
 
-    def onUpdateButtonClicked(self):
+    def onImportButtonClicked(self):
         if not self.checkCookie():
             return
         self.clearButton.setEnabled(False)
