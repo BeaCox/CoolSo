@@ -10,7 +10,6 @@ from qframelesswindow import FramelessWindow, StandardTitleBar
 
 
 from config import cfg
-from import_images import ImportThread
 from page.local_search import LocalSearchInterface
 from page.pixiv_search import PixivSearchInterface
 from page.settings import SettingInterface
@@ -49,8 +48,6 @@ class Window(FramelessWindow):
 
         # add items to navigation interface
         self.initNavigation()
-
-        self.startImportThread()
 
         QTimer.singleShot(1600, self.splashScreen.close)
 
@@ -105,10 +102,6 @@ class Window(FramelessWindow):
             tooltip=text,
             parentRouteKey=parent.objectName() if parent else None
         )
-
-    def startImportThread(self):
-        self.importThread = ImportThread(cfg.folder.value)
-        self.importThread.start()
 
     def switchTo(self, widget):
         self.stackWidget.setCurrentWidget(widget)

@@ -1,9 +1,10 @@
 import os
 
-from PIL.Image import Image
-from PyQt5.QtCore import Qt, QTimer
+from PIL import Image
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QStackedWidget, QApplication
-from qfluentwidgets import FluentIcon, InfoBar, PushButton, SimpleCardWidget, SegmentedWidget, PrimaryPushButton
+from qfluentwidgets import FluentIcon, InfoBar, PushButton, SimpleCardWidget, SegmentedWidget, PrimaryPushButton, \
+    StateToolTip
 from PyQt5.QtGui import QImage, QKeySequence
 
 import utils
@@ -15,12 +16,13 @@ from components.image_input import ImageInput
 from components.text_input import PromptInput, OCRInput
 from config import cfg
 from search_services import SearchService
-from import_images import import_single_image
+from import_images import import_single_image, import_dirs
 
 
 class LocalSearchInterface(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.importThread = None
         self.setObjectName("Local-Search-Interface")
         layout = QVBoxLayout()
         self.mongo_collection = utils.get_mongo_collection()
@@ -33,6 +35,8 @@ class LocalSearchInterface(QWidget):
         layout.addWidget(self.inputCard)
         layout.addWidget(self.outputCard)
         self.setLayout(layout)
+        self.stateTooltip = None
+        self.startImportThread(cfg.folder.value)
 
     def keyPressEvent(self, event):
         if event.matches(QKeySequence.Paste):
@@ -72,6 +76,24 @@ class LocalSearchInterface(QWidget):
             self.inputCard.setFixedHeight(300)
         elif currentWidget == self.inputCard.FusionInterface:
             self.inputCard.setFixedHeight(350)
+
+    def startImportThread(self, base_dirs):
+        self.showStateTooltip()
+        self.importThread = ImportThread(base_dirs)
+        self.importThread.localThreadFinished.connect(self.onImportFinished)
+        self.importThread.start()
+
+    def onImportFinished(self):
+        self.outputCard.updateGallery()
+        self.stateTooltip.setContent('Import finished!')
+        self.stateTooltip.setState(True)
+        self.stateTooltip = None
+        self.inputCard.enableButtons()
+
+    def showStateTooltip(self):
+        self.stateTooltip = StateToolTip('Importing images...', 'Please wait', self)
+        self.stateTooltip.show()
+        self.inputCard.disableButtons()
 
 
 class SearchMethods(SimpleCardWidget):
@@ -132,8 +154,6 @@ class SearchMethods(SimpleCardWidget):
 
     def onSearchButtonClicked(self):
         results = None
-        if not self.checkImportStatus():
-            return
         currentInterface = self.stackedWidget.currentWidget()
         query = self.getQueryFromInterface(currentInterface)
         if query is None:
@@ -170,10 +190,7 @@ class SearchMethods(SimpleCardWidget):
             return
 
     def onUpdateButtonClicked(self):
-        if not self.checkImportStatus():
-            return
-        self.clearButton.setEnabled(False)
-        self.searchButton.setEnabled(False)
+        self.parent().showStateTooltip()
         print("Start updating...\n")
         base_dirs = cfg.folder.value
         cursor = self.parent().mongo_collection.find({}, {"filename": 1})
@@ -193,24 +210,11 @@ class SearchMethods(SimpleCardWidget):
                                     utils.get_config(), 
                                     utils.get_mongo_collection())
 
-        print("Finish updating. Updated {} item(s)".format(cnt))
-        self.clearButton.setEnabled(True)
-        self.searchButton.setEnabled(True)
-        self.parent().outputCard.updateGallery()
+        self.parent().onImportFinished()
 
     def onCurrentIndexChanged(self, index):
         widget = self.stackedWidget.widget(index)
         self.pivot.setCurrentItem(widget.objectName())
-
-    def checkImportStatus(self):
-        if cfg.importFinished is False:
-            InfoBar.error(
-                title=self.tr("Error"),
-                content=self.tr("Importing images, please wait."),
-                parent=self
-            ).show()
-            return False
-        return True
 
     def getQueryFromInterface(self, interface):
         if isinstance(interface, ImageInput):
@@ -245,5 +249,32 @@ class SearchMethods(SimpleCardWidget):
                 return None
             return text
 
+    def enableButtons(self):
+        self.searchButton.setEnabled(True)
+        self.updateButton.setEnabled(True)
+        self.clearButton.setEnabled(True)
 
+    def disableButtons(self):
+        self.searchButton.setEnabled(False)
+        self.updateButton.setEnabled(False)
+        self.clearButton.setEnabled(False)
 
+class ImportThread(QThread):
+
+    localThreadFinished = pyqtSignal()
+
+    def __init__(self, base_dirs):
+        super().__init__()
+        self.base_dirs = base_dirs
+        self.clip = clip_model.get_model()
+        self.ocr = ocr_model.get_ocr_model()
+        self.config = utils.get_config()
+        self.mongo_collection = utils.get_mongo_collection()
+
+    def run(self):
+        if self.mongo_collection.count_documents({}) == 0:
+            import_dirs(self.base_dirs, self.clip, self.ocr, self.config, self.mongo_collection)
+            self.localThreadFinished.emit()
+        else:
+            print("Database is not empty. Skipping import.")
+            self.localThreadFinished.emit()

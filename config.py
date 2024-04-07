@@ -20,8 +20,6 @@ class LanguageSerializer(ConfigSerializer):
 
 class Config(QConfig):
 
-    importFinished = False
-
     language = OptionsConfigItem(
         "MainWindow", "Language", Language.ENGLISH, OptionsValidator(Language), LanguageSerializer(), restart=True)
 

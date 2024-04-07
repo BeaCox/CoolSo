@@ -1,7 +1,8 @@
-from PIL.Image import Image
-from PyQt5.QtCore import Qt, QTimer
+from PIL import Image
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QStackedWidget, QApplication
-from qfluentwidgets import FluentIcon, InfoBar, PushButton, SimpleCardWidget, SegmentedWidget, PrimaryPushButton
+from qfluentwidgets import FluentIcon, InfoBar, PushButton, SimpleCardWidget, SegmentedWidget, PrimaryPushButton, \
+    StateToolTip
 from PyQt5.QtGui import QImage, QKeySequence
 
 import utils
@@ -30,6 +31,7 @@ class PixivSearchInterface(QWidget):
         layout.addWidget(self.inputCard)
         layout.addWidget(self.search_options)
         layout.addWidget(self.outputCard)
+        self.stateTooltip = None
         self.setLayout(layout)
 
     def keyPressEvent(self, event):
@@ -71,11 +73,22 @@ class PixivSearchInterface(QWidget):
         elif currentWidget == self.inputCard.FusionInterface:
             self.inputCard.setFixedHeight(350)
 
+    def hideStateToolTip(self):
+        self.stateTooltip.setContent('Import finished!')
+        self.stateTooltip.setState(True)
+        self.stateTooltip = None
+        self.inputCard.enableButtons()
+
+    def showStateTooltip(self):
+        self.stateTooltip = StateToolTip('Importing images...', 'Please wait', self)
+        self.stateTooltip.show()
+        self.inputCard.disableButtons()
 
 class SearchMethods(SimpleCardWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
+        self.importThread = None
         self.resize(400, 400)
 
         self.pivot = SegmentedWidget(self)
@@ -223,8 +236,6 @@ class SearchMethods(SimpleCardWidget):
     def onImportButtonClicked(self):
         if not self.checkCookie():
             return
-        self.clearButton.setEnabled(False)
-        self.searchButton.setEnabled(False)
         if self.parent().search_options.buttonGroup.checkedButton() == self.parent().search_options.bookmarkOption:
             uid = self.parent().search_options.uidInput.text() or cfg.uid.value
             if uid:
@@ -236,8 +247,6 @@ class SearchMethods(SimpleCardWidget):
                                     "page: https://www.pixiv.net/users/{UID}"),
                     parent=self
                 ).show()
-                self.clearButton.setEnabled(True)
-                self.searchButton.setEnabled(True)
                 return None
         elif self.parent().search_options.buttonGroup.checkedButton() == self.parent().search_options.artistOption:
             artist_id = self.parent().search_options.artistIdInput.text()
@@ -249,8 +258,6 @@ class SearchMethods(SimpleCardWidget):
                     content=self.tr("Please enter an artist's uid."),
                     parent=self
                 ).show()
-                self.clearButton.setEnabled(True)
-                self.searchButton.setEnabled(True)
                 return None
         elif self.parent().search_options.buttonGroup.checkedButton() == self.parent().search_options.keywordOption:
             keyword = self.parent().search_options.keywordInput.text()
@@ -264,18 +271,43 @@ class SearchMethods(SimpleCardWidget):
                     content=self.tr("Please enter a keyword."),
                     parent=self
                 ).show()
-                self.clearButton.setEnabled(True)
-                self.searchButton.setEnabled(True)
                 return None
         else:
             return None
         self.parent().mongo_collection.drop()
-        app.run()
-        self.clearButton.setEnabled(True)
-        self.searchButton.setEnabled(True)
+        self.parent().showStateTooltip()
+
+        self.importThread = ImportThread(app)
+        self.importThread.pixivThreadFinished.connect(self.onImportFinished)
+        self.importThread.start()
+
         self.parent().outputCard.updateGallery()
 
     def onCurrentIndexChanged(self, index):
         widget = self.stackedWidget.widget(index)
         self.pivot.setCurrentItem(widget.objectName())
 
+    def onImportFinished(self):
+        self.parent().hideStateTooltip()
+        self.parent().outputCard.updateGallery()
+
+    def enableButtons(self):
+        self.searchButton.setEnabled(True)
+        self.importButton.setEnabled(True)
+        self.clearButton.setEnabled(True)
+
+    def disableButtons(self):
+        self.searchButton.setEnabled(False)
+        self.importButton.setEnabled(False)
+        self.clearButton.setEnabled(False)
+
+class ImportThread(QThread):
+    pixivThreadFinished = pyqtSignal()
+
+    def __init__(self, app):
+        super().__init__()
+        self.app = app
+
+    def run(self):
+        self.app.run()
+        self.pixivThreadFinished.emit()

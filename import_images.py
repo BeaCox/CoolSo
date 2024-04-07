@@ -6,9 +6,6 @@ from tqdm import tqdm
 import clip_model
 import ocr_model
 import utils
-from PyQt5.QtCore import QThread, pyqtSignal
-
-from config import cfg
 
 
 def import_single_image(filename: str, clip: clip_model.CLIPModel, ocr: ocr_model.OCRModel,
@@ -83,27 +80,5 @@ def import_dirs(base_dirs: list, clip: clip_model.CLIPModel, ocr: ocr_model.OCRM
         for filename in tqdm(filelist):
             import_single_image(filename, clip, ocr, config, mongo_collection)
 
-
-
-class ImportThread(QThread):
-
-    threadFinished = pyqtSignal()
-
-    def __init__(self, base_dirs):
-        super().__init__()
-        self.base_dirs = base_dirs
-        self.clip = clip_model.get_model()
-        self.ocr = ocr_model.get_ocr_model()
-        self.config = utils.get_config()
-        self.mongo_collection = utils.get_mongo_collection()
-
-    def run(self):
-        if self.mongo_collection.count_documents({}) == 0:
-            import_dirs(self.base_dirs, self.clip, self.ocr, self.config, self.mongo_collection)
-            self.threadFinished.emit()
-            cfg.importFinished = True
-        else:
-            cfg.importFinished = True
-            print("Database is not empty. Skipping import.")
 
 
