@@ -170,7 +170,7 @@ class SearchMethods(SimpleCardWidget):
                 results = self.search_service.search_image(query, topn=20)
             elif isinstance(currentInterface, OCRInput):
                 results = self.search_service.search_ocr(query, topn=20)
-        elif isinstance(query, Image):
+        elif isinstance(query, Image.Image):
             results = self.search_service.search_image(query, topn=20)
 
         if results is not None:
